@@ -36,10 +36,22 @@ def main():
     prompt_char = ["#", "> ", ">"]
 
     for filename in files_list:
+        """
         # ファイルの内容を読み込む
-        f = open(filename, "rt", encoding="ascii")
-        contents = f.readlines()
-        f.close
+        # f = open(filename, "rt", encoding="ascii")
+        # f = open(filename, "rt", encoding="sjis")
+        # f = open(filename, "rt", encoding="utf8")
+        """
+        encodings = ["ascii", "sjis", "utf8"]
+        for enc in encodings:
+            # ファイルの内容を読み込む
+            try:
+                f = open(filename, "rt", encoding=enc)
+                contents = f.readlines()
+                f.close
+                break
+            except:
+                continue
 
         # target_commandの実行結果を取得する
         contents_target_command, prompt_list = get_contents_target_command_command(contents, target_command, prompt_char, enable_perfect_match)
