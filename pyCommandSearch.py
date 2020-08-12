@@ -2,6 +2,7 @@
 
 import glob
 import sys
+from commonLib import commonLib
 
 def main():
     argv = sys.argv
@@ -54,14 +55,11 @@ def main():
                 continue
 
         # target_commandの実行結果を取得する
-        contents_target_command, prompt_list = get_contents_target_command_command(contents, target_command, prompt_char, enable_perfect_match)
+        contents_target_command, prompt_list = commonLib.get_contents_target_command(contents, target_command, prompt_char, enable_perfect_match)
 
         # target_commandの実行結果を表示する
-        print("##----------------------------------------------------------------------##")
-        print("## {0}".format(filename))
-        print("##----------------------------------------------------------------------##")
-        for line in contents_target_command:
-            print(line, end="")
+        commonLib.print_contents_target_command(filename, contents_target_command)
+
     print("##----------------------------------------------------------------------##")
 
 def exit_msg(argv0):
@@ -70,62 +68,6 @@ def exit_msg(argv0):
           "example)\n"
           "python {0} \"../log/*.log\" \"show ip route\" false".format(argv0))
     exit(0)
-
-
-def get_contents_target_command_command(contents, target_command, prompt_char, enable_perfect_match):
-    """ target_commandの実行結果を取得する"""
-    prompt_list = []
-    command_start = False
-    contents_target_command = []
-    for line in contents:
-        # プロンプト文字列の検出
-        if len(prompt_list) == 0:
-            # "sysname> #comment command"といったパターンの誤検知防止のため
-            # プロンプト文字列が複数検出された場合は、検出位置は小さい方の値とする。
-            pos_min = sys.maxsize
-            pos = 0
-            for prompt in prompt_char:
-                if prompt in line:
-                    pos = line.index(prompt)
-                    if pos < pos_min:
-                        pos_min = pos
-            if pos_min > 0 and pos_min != sys.maxsize:
-                # プロンプト文字列の候補をセットする
-                for prompt in prompt_char:
-                    prompt_list.append(line[:pos_min] + prompt)
-        else:
-            # target_command開始行の検出
-            if target_command in line:
-                if enable_perfect_match:
-                    line_temp = line.rstrip()
-                    # 誤判断防止のため、正規表現を使った検索は廃止した（エスケープが面倒）
-                    # example)
-                    # "show ip route vrf *"
-                    if line_temp.index(target_command) != len(line_temp) - len(target_command):
-                        continue
-                command_start = True
-                contents_target_command.append(line)
-                continue
-            else:
-                if target_command in line:
-                    command_start = True
-                    contents_target_command.append(line)
-                    continue
-            if command_start:
-                contents_target_command.append(line)
-
-                # 次のプロンプトの検出
-                if isPrompt(line, prompt_list):
-                    command_start = False
-                    break
-
-    return contents_target_command, prompt_list
-
-def isPrompt(line, prompt_list):
-    for prompt in prompt_list:
-        if prompt in line:
-            return True
-    return False
 
 if __name__ == "__main__":
     main()

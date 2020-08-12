@@ -4,7 +4,7 @@ import glob
 import openpyxl
 import os
 import sys
-
+from commonLib import commonLib
 
 class CursorPos:
     def __init__(self, i, j):
@@ -64,7 +64,7 @@ def main():
         f.close
 
         # "show version"コマンドの実行結果を取得する
-        contents_target_command, prompt_list = get_contents_target_command_command(contents, "show version", prompt_char, enable_perfect_match)
+        contents_target_command, prompt_list = commonLib.get_contents_target_command(contents, "show version", prompt_char, enable_perfect_match)
         print("=================================================================================")
         print(filenamePath)
         for line in contents_target_command:
@@ -94,7 +94,7 @@ def main():
         sPos[t_ws.title].i_col = 3
 
         # "show chassis power.*"コマンドの実行結果を取得する
-        contents_target_command, prompt_list = get_contents_target_command_command(contents, target_command, prompt_char, enable_perfect_match)
+        contents_target_command, prompt_list = commonLib.get_contents_target_command(contents, target_command, prompt_char, enable_perfect_match)
 
         # "show chassis power.*"コマンドの種類を判別する
         powerCommandType = ""
@@ -206,55 +206,6 @@ def get_cells(t_ws, row_start, col_start, row_count, col_count):
         print()
 
 
-def get_contents_target_command_command(contents, target_command, prompt_char, enable_perfect_match):
-    """ target_commandの実行結果を取得する"""
-    prompt_list = []
-    command_start = False
-    contents_target_command = []
-    for line in contents:
-        # プロンプト文字列の検出
-        if len(prompt_list) == 0:
-            # "sysname> #comment command"といったパターンの誤検知防止のため
-            # プロンプト文字列が複数検出された場合は、検出位置は小さい方の位置とする。
-            pos_min = sys.maxsize
-            pos = 0
-            for prompt in prompt_char:
-                if prompt in line:
-                    pos = line.index(prompt)
-                    if pos < pos_min:
-                        pos_min = pos
-            if pos_min > 0 and pos_min != sys.maxsize:
-                # プロンプト文字列の候補をセットする
-                for prompt in prompt_char:
-                    prompt_list.append(line[:pos_min] + prompt)
-        else:
-            # target_command開始行の検出
-            if target_command in line:
-                if enable_perfect_match:
-                    line_temp = line.rstrip()
-                    # 誤判断防止のため、正規表現を使った検索は廃止した（エスケープが面倒）
-                    # example)
-                    # "show ip route vrf *"
-                    if line_temp.index(target_command) != len(line_temp) - len(target_command):
-                        continue
-                command_start = True
-                contents_target_command.append(line)
-                continue
-            else:
-                if target_command in line:
-                    command_start = True
-                    contents_target_command.append(line)
-                    continue
-            if command_start:
-                contents_target_command.append(line)
-
-                # 次のプロンプトの検出
-                if isPrompt(line, prompt_list):
-                    command_start = False
-                    break
-
-    return contents_target_command, prompt_list
-
 
 def get_show_chassis_power_budget_statistics(contents_target_command, prompt_list):
     """
@@ -264,7 +215,7 @@ def get_show_chassis_power_budget_statistics(contents_target_command, prompt_lis
     fpcs = []
     table = None
     for i in range(len(contents_target_command)):
-        if isPrompt(contents_target_command[i], prompt_list):
+        if commonLib.isPrompt(contents_target_command[i], prompt_list):
             if table != None and len(table)> 0:
                 fpcs.append(table)
             continue
@@ -292,10 +243,10 @@ def get_show_chassis_power_to_str(contents_target_command, prompt_list):
 
     resStr = ""
     for i in range(len(contents_target_command)):
-        if isPrompt(contents_target_command[i], prompt_list):
+        if commonLib.isPrompt(contents_target_command[i], prompt_list):
             start = True
             continue
-        if start and isPrompt(contents_target_command[i], prompt_list):
+        if start and commonLib.isPrompt(contents_target_command[i], prompt_list):
             break
         else:
             if contents_target_command[i] == "\n":
@@ -380,14 +331,6 @@ def output_show_chassis_power_detail(resStr, t_ws, sPos):
     """格納結果をワークシートに出力する"""
     t_ws.cell(sPos[t_ws.title].i_row, sPos[t_ws.title].i_col).value = resStr
     sPos[t_ws.title].i_row += 1
-
-
-def isPrompt(line, prompt_list):
-    """対象文字列にプロンプトが含まれているか判定する"""
-    for prompt in prompt_list:
-        if prompt in line:
-            return True
-    return False
 
 
 if __name__ == "__main__":
